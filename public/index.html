@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat with Code &amp; Repos</title>
+    <style>
+      :root {
+        --bg: #0d1117;
+        --panel: #161b22;
+        --border: #30363d;
+        --text: #e6edf3;
+        --muted: #8b949e;
+        --accent: #2f81f7;
+        --user: #1f6feb33;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      header {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+        background: var(--panel);
+      }
+      header h1 { margin: 0; font-size: 16px; }
+      header p { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+      header .roots { font-size: 11px; }
+      header .roots code {
+        background: #00000044;
+        padding: 1px 6px;
+        border-radius: 4px;
+        margin-right: 6px;
+        font-family: "SF Mono", Consolas, monospace;
+        color: var(--text);
+      }
+      #chat {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .msg { max-width: 800px; width: 100%; align-self: center; }
+      .msg .role { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 4px; }
+      .bubble {
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        line-height: 1.5;
+        font-size: 14px;
+      }
+      .msg.user .bubble { background: var(--user); }
+      .bubble code {
+        background: #00000044;
+        padding: 1px 5px;
+        border-radius: 4px;
+        font-family: "SF Mono", Consolas, monospace;
+        font-size: 13px;
+      }
+      .bubble pre {
+        background: #00000055;
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .bubble pre code { background: none; padding: 0; }
+      .bubble p { margin: 0 0 10px; }
+      .bubble p:last-child { margin-bottom: 0; }
+      .bubble h1, .bubble h2, .bubble h3, .bubble h4 {
+        margin: 14px 0 8px;
+        line-height: 1.25;
+        font-weight: 600;
+      }
+      .bubble h1 { font-size: 20px; }
+      .bubble h2 { font-size: 17px; }
+      .bubble h3 { font-size: 15px; }
+      .bubble h4 { font-size: 14px; color: var(--muted); }
+      .bubble ul, .bubble ol { margin: 0 0 10px; padding-left: 22px; }
+      .bubble li { margin: 2px 0; }
+      .bubble blockquote {
+        margin: 0 0 10px;
+        padding: 2px 12px;
+        border-left: 3px solid var(--border);
+        color: var(--muted);
+      }
+      .bubble hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+      .bubble a { color: var(--accent); }
+      .bubble table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 4px 0 14px;
+        font-size: 13px;
+        display: block;
+        overflow-x: auto;
+      }
+      .bubble th, .bubble td {
+        border: 1px solid var(--border);
+        padding: 6px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+      .bubble thead th { background: #1f6feb22; font-weight: 600; }
+      .bubble tbody tr:nth-child(even) { background: #ffffff08; }
+      footer {
+        border-top: 1px solid var(--border);
+        background: var(--panel);
+        padding: 14px 20px;
+      }
+      form { max-width: 800px; margin: 0 auto; display: flex; gap: 10px; }
+      textarea {
+        flex: 1;
+        resize: none;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-family: inherit;
+        font-size: 14px;
+        max-height: 160px;
+      }
+      button {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0 18px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:disabled { opacity: .5; cursor: not-allowed; }
+      .hint { max-width: 800px; margin: 6px auto 0; font-size: 11px; color: var(--muted); }
+      .file-link {
+        color: var(--accent);
+        text-decoration: none;
+        border-bottom: 1px dotted var(--accent);
+        cursor: pointer;
+      }
+      .file-link:hover { background: #2f81f722; }
+      .file-link::before { content: "📄 "; }
+      #toast {
+        position: fixed;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1f2937;
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 13px;
+        opacity: 0;
+        transition: opacity .2s;
+        pointer-events: none;
+      }
+      #toast.show { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>💬 Chat with Code &amp; Repos</h1>
+      <p>Ask questions about the included repositories. Answers are grounded — live — in their code, config, and docs (no pre-indexing).</p>
+      <p id="roots" class="roots"></p>
+    </header>
+    <div id="chat"></div>
+    <div id="toast"></div>
+    <footer>
+      <form id="form">
+        <textarea id="input" rows="1" placeholder="Ask about the code: architecture, how X works, where Y is defined…" autofocus></textarea>
+        <button id="send" type="submit">Ask</button>
+      </form>
+      <div class="hint">Enter to send · Shift+Enter for newline</div>
+    </footer>
+
+    <script type="module">
+      import { marked } from "/vendor/marked/marked.esm.js";
+      import DOMPurify from "/vendor/dompurify/purify.es.mjs";
+
+      marked.setOptions({ gfm: true, breaks: true });
+
+      const chat = document.getElementById("chat");
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+      const toast = document.getElementById("toast");
+      const rootsEl = document.getElementById("roots");
+      let sessionId = null;
+
+      // Show which top-level roots are in scope.
+      async function loadRoots() {
+        try {
+          const res = await fetch("/api/roots");
+          const { roots } = await res.json();
+          if (Array.isArray(roots) && roots.length) {
+            rootsEl.innerHTML =
+              "Included: " +
+              roots.map((r) => `<code title="excludes: ${(r.excludes || []).join(", ") || "none"}">${r.root}/</code>`).join("");
+          }
+        } catch {
+          // best-effort
+        }
+      }
+
+      // ── File linking ──────────────────────────────────────────────────────
+      let fileRegex = null;
+      const pathByNeedle = new Map();
+
+      function reEscape(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+
+      async function loadFiles() {
+        try {
+          const res = await fetch("/api/files");
+          const { files } = await res.json();
+          const byBase = {};
+          for (const p of files) {
+            const base = p.split("/").pop();
+            (byBase[base] ||= []).push(p);
+          }
+          // Match full relative paths, plus unambiguous basenames.
+          for (const p of files) pathByNeedle.set(p, p);
+          for (const [base, ps] of Object.entries(byBase)) {
+            if (ps.length === 1) pathByNeedle.set(base, ps[0]);
+          }
+          const needles = [...pathByNeedle.keys()].sort((a, b) => b.length - a.length);
+          if (needles.length) {
+            fileRegex = new RegExp(`(?<![\\w/.-])(${needles.map(reEscape).join("|")})(?![\\w-])`, "g");
+          }
+        } catch {
+          // Linking is best-effort; ignore failures.
+        }
+      }
+
+      function linkifyElement(root) {
+        if (!fileRegex) return;
+        const targets = [];
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+          acceptNode(node) {
+            const p = node.parentElement;
+            // Skip code blocks and existing links; allow inline <code> citations.
+            if (!p || p.closest("pre, a")) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          },
+        });
+        let n;
+        while ((n = walker.nextNode())) targets.push(n);
+        for (const node of targets) {
+          const text = node.nodeValue;
+          fileRegex.lastIndex = 0;
+          let m, last = 0;
+          const frag = document.createDocumentFragment();
+          while ((m = fileRegex.exec(text))) {
+            const path = pathByNeedle.get(m[0]);
+            if (!path) continue;
+            if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+            const a = document.createElement("a");
+            a.href = "#";
+            a.className = "file-link";
+            a.dataset.path = path;
+            a.title = "Open " + path;
+            a.textContent = m[0];
+            frag.appendChild(a);
+            last = m.index + m[0].length;
+          }
+          if (last === 0) continue;
+          if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+          node.parentNode.replaceChild(frag, node);
+        }
+      }
+
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add("show");
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => toast.classList.remove("show"), 2500);
+      }
+
+      chat.addEventListener("click", async (e) => {
+        const a = e.target.closest(".file-link");
+        if (!a) return;
+        e.preventDefault();
+        const path = a.dataset.path;
+        try {
+          const res = await fetch("/api/open", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path }),
+          });
+          const j = await res.json();
+          showToast(res.ok ? `Opened ${j.opened}` : `Could not open: ${j.error}`);
+        } catch (err) {
+          showToast(`Open failed: ${err.message}`);
+        }
+      });
+
+      function escapeHtml(s) {
+        return s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      }
+
+      // Render Markdown (incl. GFM tables) to sanitized HTML, then linkify filenames.
+      function renderInto(bubble, text) {
+        bubble.innerHTML = DOMPurify.sanitize(marked.parse(text));
+        linkifyElement(bubble);
+      }
+
+      function addMessage(role, text) {
+        const wrap = document.createElement("div");
+        wrap.className = `msg ${role}`;
+        wrap.innerHTML = `<div class="role">${role}</div><div class="bubble"></div>`;
+        const bubble = wrap.querySelector(".bubble");
+        bubble.textContent = text;
+        chat.appendChild(wrap);
+        chat.scrollTop = chat.scrollHeight;
+        return bubble;
+      }
+
+      async function ask(question) {
+        addMessage("user", question);
+        const bubble = addMessage("assistant", "");
+        let full = "";
+
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: question, sessionId }),
+        });
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const frames = buffer.split("\n\n");
+          buffer = frames.pop() ?? "";
+          for (const frame of frames) {
+            const evLine = frame.split("\n").find((l) => l.startsWith("event:"));
+            const dataLine = frame.split("\n").find((l) => l.startsWith("data:"));
+            if (!evLine || !dataLine) continue;
+            const event = evLine.slice(6).trim();
+            const data = JSON.parse(dataLine.slice(5).trim());
+            if (event === "session") {
+              sessionId = data.sessionId;
+            } else if (event === "delta") {
+              full += data.text;
+              renderInto(bubble, full);
+              chat.scrollTop = chat.scrollHeight;
+            } else if (event === "error") {
+              bubble.innerHTML = `<em style="color:#f85149">Error: ${escapeHtml(data.message)}</em>`;
+            }
+          }
+        }
+        if (!full) bubble.textContent = "(no response)";
+      }
+
+      function autosize() {
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 160) + "px";
+      }
+      input.addEventListener("input", autosize);
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const question = input.value.trim();
+        if (!question) return;
+        input.value = "";
+        autosize();
+        sendBtn.disabled = true;
+        input.disabled = true;
+        try {
+          await ask(question);
+        } finally {
+          sendBtn.disabled = false;
+          input.disabled = false;
+          input.focus();
+        }
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      loadFiles();
+      loadRoots();
+    </script>
+  </body>
+</html>

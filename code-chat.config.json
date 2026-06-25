@@ -1,0 +1,24 @@
+{
+  "$comment": "Top-level INCLUDE roots the assistant may read. 'include' is relative to this config file's directory. 'exclude' entries are relative to their own include root and OVERRIDE the include (an excluded path is never readable even though its parent is included). Glob syntax: '*' (one segment), '**' (any depth), '?' (one char). A plain name like 'dist' matches that file or directory and everything under it. The 'code-chat' app directory is intentionally NOT included.",
+  "roots": [
+    {
+      "include": "../ai-dev-kit",
+      "exclude": [
+        "databricks-skills/**/dist",
+        "**/__pycache__"
+      ]
+    },
+    {
+      "include": "../appkit",
+      "exclude": [
+        "pnpm-lock.yaml",
+        "**/dist",
+        "**/.turbo"
+      ]
+    },
+    {
+      "include": "../fde-challenge",
+      "exclude": []
+    }
+  ]
+}
