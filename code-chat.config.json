@@ -5,7 +5,21 @@
       "include": "../ai-dev-kit",
       "exclude": [
         "databricks-skills/**/dist",
-        "**/__pycache__"
+        "**/__pycache__",
+        "**/.venv",
+        "**/.git",
+        ".claude",
+        "projects",
+        "alembic",
+        "skills",
+        "server",
+        ".env.local",
+        ".databricks",
+        ".venv",
+        "databricks_builder_app.egg-info",
+        "uv.lock",
+        "client",
+        "tests"
       ]
     },
     {
